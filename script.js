@@ -10,7 +10,7 @@
     menuBtn.addEventListener('click', () => navLinks.classList.toggle('active'));
     document.querySelectorAll('.nav-links a').forEach(l => l.addEventListener('click', () => navLinks.classList.remove('active')));
 
-    // Animated counters (resultados)
+    // Animated counters
     const counters = document.querySelectorAll('.result-value[data-target]');
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -33,13 +33,12 @@
     }, { threshold: 0.5 });
     counters.forEach(c => observer.observe(c));
 
-    // Carousel de depoimentos
+    // Carousel
     const track = document.getElementById('track');
     const dotsContainer = document.getElementById('dots');
     const slides = track.children;
     let current = 0;
 
-    // Cria os dots
     for (let i = 0; i < slides.length; i++) {
         const dot = document.createElement('button');
         dot.className = 'dot' + (i === 0 ? ' active' : '');
@@ -54,7 +53,6 @@
         Array.from(dots).forEach((d, idx) => d.classList.toggle('active', idx === current));
     }
 
-    // Auto slide a cada 4.5 segundos
     setInterval(() => goTo((current + 1) % slides.length), 4500);
 
     // FAQ accordion
@@ -66,90 +64,47 @@
         });
     });
 
-    // ========== FUNÇÃO PARA DISPARAR EVENTO DE LEAD ==========
-    function trackLead(formData) {
-        // 1. Google Analytics (gtag) se existir
-        if (typeof gtag === 'function') {
-            gtag('event', 'generate_lead', {
-                'event_category': 'formulario',
-                'event_label': 'contato',
-                'value': 1,
-                'currency': 'BRL',
-                'send_to': 'G-XXXXXXXXXX' // opcional: substitua pelo seu ID
-            });
-            console.log('[GTAG] Lead enviado');
-        }
-
-        // 2. Meta Pixel (fbq) se existir
-        if (typeof fbq === 'function') {
-            fbq('track', 'Lead', {
-                content_name: 'Formulário de Contato',
-                content_category: 'Lead',
-                user_data: {
-                    phone: formData.telefone,
-                    email: undefined // não temos email no form
-                }
-            });
-            console.log('[META PIXEL] Lead enviado');
-        }
-
-        // 3. Google Tag Manager (dataLayer) – útil para GTM
-        if (typeof dataLayer !== 'undefined') {
-            dataLayer.push({
-                'event': 'lead_form_submit',
-                'form_nome': formData.nome,
-                'form_empresa': formData.empresa,
-                'form_segmento': formData.segmento
-            });
-            console.log('[GTM] Evento lead_form_submit enviado');
-        }
-
-        // 4. Evento customizado via JavaScript (para analytics próprios)
-        const customEvent = new CustomEvent('site_lead', {
-            detail: formData
-        });
-        document.dispatchEvent(customEvent);
-        console.log('[Custom Event] site_lead disparado');
-    }
-    // ========================================================
-
-    // Formulário de contato
-    const whatsappNumber = '5531999999999'; // <-- ALTERE AQUI PARA SEU NÚMERO
+    // --------------------------------------------------------------
+    // FORMULÁRIO DE LEAD: DISPARA EVENTO DO FACEBOOK PIXEL (Lead) 
+    // E DEPOIS ABRE O WHATSAPP
+    // --------------------------------------------------------------
+    // 🔧 ATENÇÃO: Substitua o número abaixo pelo seu número com DDD (sem espaços ou caracteres especiais)
+    const whatsappNumber = '5531999999999'; // <-- ALTERE AQUI PARA SEU NÚMERO REAL
 
     document.getElementById('contactForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
+        // Captura os dados do formulário
         const nome = document.getElementById('nome').value.trim();
-        const telefone = document.getElementById('telefone').value.trim();
+        const tel = document.getElementById('telefone').value.trim();
         const empresa = document.getElementById('empresa').value.trim();
         const segmento = document.getElementById('segmento').value;
         const mensagem = document.getElementById('mensagem').value.trim();
 
-        // Preparar dados do lead
-        const leadData = {
-            nome: nome,
-            telefone: telefone,
-            empresa: empresa,
-            segmento: segmento,
-            mensagem: mensagem,
-            url_atual: window.location.href,
-            data_hora: new Date().toISOString()
-        };
+        // 1º - DISPARA O EVENTO LEAD DO FACEBOOK PIXEL
+        if (typeof fbq === 'function') {
+            fbq('track', 'Lead', {
+                content_name: 'Formulário de Contato - Tráfego Pago',
+                content_category: 'Lead',
+                user_nome: nome,
+                user_telefone: tel,
+                empresa: empresa,
+                segmento: segmento
+            });
+            console.log('Evento Lead enviado para o Facebook Pixel');
+        } else {
+            console.warn('Facebook Pixel não carregado');
+        }
 
-        // Disparar evento de lead (para todos os pixels/gtags configurados)
-        trackLead(leadData);
-
-        // Construir mensagem para WhatsApp
-        const text = `Olá, visitei sua página e gostaria de saber mais sobre seus serviços de gestão de tráfego pago.%0A%0A*Nome:* ${nome}%0A*WhatsApp:* ${telefone}%0A*Empresa:* ${empresa}%0A*Segmento:* ${segmento}%0A*Mensagem:* ${mensagem || 'Nenhuma'}`;
-
-        // Abrir WhatsApp
+        // 2º - ABRE O WHATSAPP COM A MENSAGEM
+        const text = `Olá, visitei sua página e gostaria de saber mais sobre seus serviços de gestão de tráfego pago.%0A%0A*Nome:* ${nome}%0A*WhatsApp:* ${tel}%0A*Empresa:* ${empresa}%0A*Segmento:* ${segmento}%0A*Mensagem:* ${mensagem || 'Nenhuma'}`;
         window.open(`https://wa.me/${whatsappNumber}?text=${text}`, '_blank');
-
-        // Resetar formulário
+        
+        // Limpa o formulário
         this.reset();
     });
 
-    // Smooth scroll para links internos (âncoras)
+    // Smooth scroll
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function(e) {
             const target = document.querySelector(this.getAttribute('href'));

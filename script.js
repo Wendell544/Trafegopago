@@ -66,33 +66,86 @@
         });
     });
 
-    // Formulário de contato: envia para o WhatsApp + dispara evento de Lead para o Facebook Pixel
-    // 🔧 ATENÇÃO: Substitua o número abaixo pelo seu número com DDD (sem espaços ou caracteres especiais)
-    const whatsappNumber = '5531999999999'; // <-- ALTERE AQUI PARA SEU NÚMERO
+    // ========== FUNÇÃO PARA DISPARAR EVENTO DE LEAD ==========
+    function trackLead(formData) {
+        // 1. Google Analytics (gtag) se existir
+        if (typeof gtag === 'function') {
+            gtag('event', 'generate_lead', {
+                'event_category': 'formulario',
+                'event_label': 'contato',
+                'value': 1,
+                'currency': 'BRL',
+                'send_to': 'G-XXXXXXXXXX' // opcional: substitua pelo seu ID
+            });
+            console.log('[GTAG] Lead enviado');
+        }
 
-    document.getElementById('contactForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const nome = document.getElementById('nome').value.trim();
-        const tel = document.getElementById('telefone').value.trim();
-        const empresa = document.getElementById('empresa').value.trim();
-        const segmento = document.getElementById('segmento').value;
-        const mensagem = document.getElementById('mensagem').value.trim();
-
-        const text = `Olá, visitei sua página e gostaria de saber mais sobre seus serviços de gestão de tráfego pago.%0A%0A*Nome:* ${nome}%0A*WhatsApp:* ${tel}%0A*Empresa:* ${empresa}%0A*Segmento:* ${segmento}%0A*Mensagem:* ${mensagem || 'Nenhuma'}`;
-
-        // Dispara o evento Lead para o Facebook Pixel (antes de abrir o WhatsApp)
+        // 2. Meta Pixel (fbq) se existir
         if (typeof fbq === 'function') {
             fbq('track', 'Lead', {
                 content_name: 'Formulário de Contato',
                 content_category: 'Lead',
-                user_nome: nome,
-                user_telefone: tel,
-                empresa: empresa,
-                segmento: segmento
+                user_data: {
+                    phone: formData.telefone,
+                    email: undefined // não temos email no form
+                }
             });
+            console.log('[META PIXEL] Lead enviado');
         }
 
+        // 3. Google Tag Manager (dataLayer) – útil para GTM
+        if (typeof dataLayer !== 'undefined') {
+            dataLayer.push({
+                'event': 'lead_form_submit',
+                'form_nome': formData.nome,
+                'form_empresa': formData.empresa,
+                'form_segmento': formData.segmento
+            });
+            console.log('[GTM] Evento lead_form_submit enviado');
+        }
+
+        // 4. Evento customizado via JavaScript (para analytics próprios)
+        const customEvent = new CustomEvent('site_lead', {
+            detail: formData
+        });
+        document.dispatchEvent(customEvent);
+        console.log('[Custom Event] site_lead disparado');
+    }
+    // ========================================================
+
+    // Formulário de contato
+    const whatsappNumber = '5531999999999'; // <-- ALTERE AQUI PARA SEU NÚMERO
+
+    document.getElementById('contactForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const nome = document.getElementById('nome').value.trim();
+        const telefone = document.getElementById('telefone').value.trim();
+        const empresa = document.getElementById('empresa').value.trim();
+        const segmento = document.getElementById('segmento').value;
+        const mensagem = document.getElementById('mensagem').value.trim();
+
+        // Preparar dados do lead
+        const leadData = {
+            nome: nome,
+            telefone: telefone,
+            empresa: empresa,
+            segmento: segmento,
+            mensagem: mensagem,
+            url_atual: window.location.href,
+            data_hora: new Date().toISOString()
+        };
+
+        // Disparar evento de lead (para todos os pixels/gtags configurados)
+        trackLead(leadData);
+
+        // Construir mensagem para WhatsApp
+        const text = `Olá, visitei sua página e gostaria de saber mais sobre seus serviços de gestão de tráfego pago.%0A%0A*Nome:* ${nome}%0A*WhatsApp:* ${telefone}%0A*Empresa:* ${empresa}%0A*Segmento:* ${segmento}%0A*Mensagem:* ${mensagem || 'Nenhuma'}`;
+
+        // Abrir WhatsApp
         window.open(`https://wa.me/${whatsappNumber}?text=${text}`, '_blank');
+
+        // Resetar formulário
         this.reset();
     });
 

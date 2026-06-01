@@ -66,7 +66,7 @@
         });
     });
 
-    // Formulário de contato: envia para o WhatsApp
+    // Formulário de contato: envia para o WhatsApp + dispara evento de Lead para o Facebook Pixel
     // 🔧 ATENÇÃO: Substitua o número abaixo pelo seu número com DDD (sem espaços ou caracteres especiais)
     const whatsappNumber = '5531999999999'; // <-- ALTERE AQUI PARA SEU NÚMERO
 
@@ -79,6 +79,18 @@
         const mensagem = document.getElementById('mensagem').value.trim();
 
         const text = `Olá, visitei sua página e gostaria de saber mais sobre seus serviços de gestão de tráfego pago.%0A%0A*Nome:* ${nome}%0A*WhatsApp:* ${tel}%0A*Empresa:* ${empresa}%0A*Segmento:* ${segmento}%0A*Mensagem:* ${mensagem || 'Nenhuma'}`;
+
+        // Dispara o evento Lead para o Facebook Pixel (antes de abrir o WhatsApp)
+        if (typeof fbq === 'function') {
+            fbq('track', 'Lead', {
+                content_name: 'Formulário de Contato',
+                content_category: 'Lead',
+                user_nome: nome,
+                user_telefone: tel,
+                empresa: empresa,
+                segmento: segmento
+            });
+        }
 
         window.open(`https://wa.me/${whatsappNumber}?text=${text}`, '_blank');
         this.reset();
